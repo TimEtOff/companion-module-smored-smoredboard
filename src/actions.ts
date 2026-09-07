@@ -1,30 +1,54 @@
 import type ModuleInstance from './main.js'
 
 export type ActionsSchema = {
-	sample_action: {
+	play_sound: {
 		options: {
-			num: number
+			path: string
 		}
+	},
+	stop_all_sounds: {
+		options: {}
 	}
 }
 
+// TODO Specific stop sound because Play Sound doesnt respect Click Action (always overlap)
 export function UpdateActions(self: ModuleInstance): void {
 	self.setActionDefinitions({
-		sample_action: {
-			name: 'My First Action',
+		play_sound: {
+			name: 'Play Sound',
 			options: [
 				{
-					id: 'num',
-					type: 'number',
-					label: 'Test',
-					default: 5,
-					min: 0,
-					max: 100,
+					id: 'path',
+					type: 'textinput',
+					label: 'Sound full path',
+					description: 'In Smoredboard, right click on a sound > Open Sound File in Explorer > Copy the path to the file'
 				},
 			],
 			callback: async (event) => {
-				console.log('Hello world!', event.options.num)
+				var msg = {
+				  Action: "PlaySound",
+				  Token: "SMORED1999VERYGOODANDCOOL",
+				  SoundPath: event.options.path,
+				  ProfileGuid: self.profileGuid
+				}
+
+				self.ws?.send(JSON.stringify(msg))
+				console.log(`Play sound '${event.options.path}'`)
 			},
 		},
+		stop_all_sounds: {
+			name: 'Stop All Sounds',
+			options: [],
+			callback: async () => {
+				var msg = {
+				  Action: "StopAllSounds",
+				  Token: "SMORED1999VERYGOODANDCOOL",
+				  ProfileGuid: self.profileGuid
+				}
+
+				self.ws?.send(JSON.stringify(msg))
+				console.log(`Stopped all sounds`)
+			},
+		}
 	})
 }

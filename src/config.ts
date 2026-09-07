@@ -3,6 +3,7 @@ import { Regex, type SomeCompanionConfigField } from '@companion-module/base'
 export type ModuleConfig = {
 	host: string
 	port: number
+	profileName: string
 }
 
 export function GetConfigFields(): SomeCompanionConfigField[] {
@@ -13,6 +14,7 @@ export function GetConfigFields(): SomeCompanionConfigField[] {
 			label: 'Target IP',
 			width: 8,
 			regex: Regex.IP,
+			default: '127.0.0.1',
 		},
 		{
 			type: 'number',
@@ -21,7 +23,14 @@ export function GetConfigFields(): SomeCompanionConfigField[] {
 			width: 4,
 			min: 1,
 			max: 65535,
-			default: 8000,
+			default: 8181,
+		},
+		{
+			type: 'textinput',
+			id: 'profileName',
+			label: 'Profile name',
+			width: 256,
+			default: undefined,
 		},
 	]
 }

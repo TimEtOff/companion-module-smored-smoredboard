@@ -1,3 +1,3 @@
-## Your module
+## SmoredBoard
 
 Write some help for your users here!
