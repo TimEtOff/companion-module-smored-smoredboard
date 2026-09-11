@@ -1,9 +1,14 @@
 import type ModuleInstance from './main.js'
 
 export type ActionsSchema = {
-	play_sound: {
+	play_sound_full: {
 		options: {
 			path: string
+		}
+	},
+	play_sound_relative: {
+		options: {
+			filename: string
 		}
 	},
 	stop_all_sounds: {
@@ -14,8 +19,9 @@ export type ActionsSchema = {
 // TODO Specific stop sound because Play Sound doesnt respect Click Action (always overlap)
 export function UpdateActions(self: ModuleInstance): void {
 	self.setActionDefinitions({
-		play_sound: {
-			name: 'Play Sound',
+		play_sound_full: {
+			name: 'Play Sound (full path)',
+			description: 'PLay a sound from its full file path',
 			options: [
 				{
 					id: 'path',
@@ -25,15 +31,26 @@ export function UpdateActions(self: ModuleInstance): void {
 				},
 			],
 			callback: async (event) => {
-				var msg = {
-				  Action: "PlaySound",
-				  Token: "SMORED1999VERYGOODANDCOOL",
-				  SoundPath: event.options.path,
-				  ProfileGuid: self.profileGuid
+				self.playSound(event.options.path)
+			},
+		},
+		play_sound_relative: {
+			name: 'Play Sound (relative)',
+			description: 'Play a sound from the folder set in the config',
+			options: [
+				{
+					id: 'filename',
+					type: 'textinput',
+					label: 'Sound file name',
+					description: '/!\\ NOT SOUND NAME, the file name. In Smoredboard, right click on a sound > Open Sound File in Explorer > Copy the file name with the extension'
+				},
+			],
+			callback: async (event) => {
+				if (self.config.soundsFolder != undefined) {
+					self.playSound(self.config.soundsFolder + event.options.filename)
+				} else {
+					self.log('error', 'Sounds folder is not set in the config')
 				}
-
-				self.ws?.send(JSON.stringify(msg))
-				console.log(`Play sound '${event.options.path}'`)
 			},
 		},
 		stop_all_sounds: {

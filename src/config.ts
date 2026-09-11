@@ -4,6 +4,8 @@ export type ModuleConfig = {
 	host: string
 	port: number
 	profileName: string
+	token: string
+	soundsFolder: string
 }
 
 export function GetConfigFields(): SomeCompanionConfigField[] {
@@ -29,7 +31,24 @@ export function GetConfigFields(): SomeCompanionConfigField[] {
 			type: 'textinput',
 			id: 'profileName',
 			label: 'Profile name',
+			description: 'If not set or not found, default to the first found profile',
 			width: 256,
+			default: undefined,
+		},
+		{
+			type: 'textinput',
+			id: 'token',
+			label: 'Token',
+			width: 256,
+			default: 'SMORED1999VERYGOODANDCOOL',
+		},
+		{
+			type: 'textinput',
+			id: 'soundsFolder',
+			label: 'Full path to sounds folder',
+			description: 'In Smoredboard, right click on a sound > Open Sound File in Explorer > Copy the path to the folder, with ending separator',
+			width: 32767,
+			regex: '^.*[\\\/]$',
 			default: undefined,
 		},
 	]

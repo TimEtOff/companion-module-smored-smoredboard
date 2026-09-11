@@ -29,8 +29,6 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 	async init(config: ModuleConfig): Promise<void> {
 		this.config = config
 
-		this.updateStatus(InstanceStatus.Ok)
-
 		this.updateActions() // export actions
 		this.updateFeedbacks() // export feedbacks
 		this.updatePresets() // export Presets
@@ -47,13 +45,7 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 		})
 
 		ws.on('open', () => {
-			this.updateStatus(InstanceStatus.Ok)
-			this.log('debug', 'Connected!')
-			var req = {
-			  Action: "GetProfiles",
-			  Token: "SMORED1999VERYGOODANDCOOL",
-			}
-			ws.send(JSON.stringify(req))
+			this.connect()
 		})
 
 		ws.on('message', (msg_data) => {
@@ -61,17 +53,30 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 
 			var res = JSON.parse(msg_data.toString())
 
-			if (!res['Success']) {
-				this.log('info', `Action failed (${res['Action']})`)
-			} else {
-				if (res['Action'] == 'GetProfiles') {
-					for (const profile of res['Profiles']) {
-						if (profile['name'] == config.profileName)
-							this.profileGuid = profile['Id']
-					}
 
-					if (config.profileName == undefined || this.profileGuid == undefined) {
-						this.profileGuid = res["Profiles"][0]["Id"]
+			if (res['Action'] == 'Invalid Authentication') {
+				this.updateStatus(InstanceStatus.AuthenticationFailure, "Check the Token in the config")
+			}
+
+			if (!res['Success']) {
+				this.log('error', `Error on ${res['Action']}: (${res['ErrorCode']}) ${res['Message']}`)
+			} else {
+				if (res['Action'] == 'Hello') {
+					this.updateStatus(InstanceStatus.Ok)
+					this.log('info', 'Successfully reached server and authenticated. Now setting profile')
+					this.sendPacket("GetProfiles")
+				} else if (res['Action'] == 'GetProfiles') {
+					if (res['Profiles'].length != 0) {
+						for (const profile of res['Profiles']) {
+							if (profile['name'] == config.profileName)
+								this.profileGuid = profile['Id']
+						}
+
+						if (config.profileName == undefined || this.profileGuid == undefined) {
+							this.profileGuid = res["Profiles"][0]["Id"]
+						}
+					} else {
+						this.updateStatus(InstanceStatus.ConnectionFailure)
 					}
 				}
 			}
@@ -85,6 +90,31 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 
 	async configUpdated(config: ModuleConfig): Promise<void> {
 		this.config = config
+		this.connect();
+	}
+
+	sendPacket(action: string, fields = {}): void {
+		var req = {
+		  Action: action,
+		  Token: this.config.token,
+		  ...fields
+		}
+		this.ws?.send(JSON.stringify(req))
+	}
+
+	connect(): void {
+		this.updateStatus(InstanceStatus.Connecting)
+		this.sendPacket("Hello")
+	}
+
+	playSound(fullPath: string): void {
+		var msg = {
+		  SoundPath: fullPath,
+		  ProfileGuid: this.profileGuid
+		}
+
+		this.sendPacket("PlaySound", msg)
+		this.log('debug', `Play sound '${fullPath}'`)
 	}
 
 	// Return config fields for web config
