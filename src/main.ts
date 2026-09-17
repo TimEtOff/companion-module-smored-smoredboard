@@ -88,6 +88,11 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 					this.handleIsSoundPlaying(res['Message'], res['SoundPath'])
 				} else if (res['Action'] == 'SoundFinished') {
 					this.handleSoundFinished(res['SoundPath'])
+				} else if (res['Action'] == 'GetSFXInfo') {
+					var data = res['Message'].split(' |+| ')
+					if (data.length == 2) {
+						this.setSoundImage(data[0], data[1])
+					}
 				}
 			}
 		})
@@ -128,6 +133,7 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 			delete this.profilesData[guid]
 		}
 		this.updateActions()
+		this.updateFeedbacks()
 	}
 
 	getProfilesDropdown(): DropdownChoice[] {
@@ -143,6 +149,7 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 			this.profilesData[profileGuid]['Sounds'] = sounds
 		}
 		this.updateActions()
+		this.updateFeedbacks()
 	}
 
 	getSoundsDropdown(): DropdownChoice[] {
@@ -161,6 +168,33 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 				return sound['Name']
 		}
 		return ''
+	}
+
+	setSoundImage(soundPath: string, encodedImage: string) {
+		if (!(encodedImage.startsWith("data:image/png;base64,") || encodedImage.startsWith("data:image/jpeg;base64,"))) {
+			encodedImage = "";
+		}
+
+		for (const guid of Object.keys(this.profilesData)) {
+			for (var i = 0; i < this.profilesData[guid]['Sounds'].length; i++) {
+				if (this.profilesData[guid]['Sounds'][i]['SoundPath'] == soundPath) {
+					this.profilesData[guid]['Sounds'][i]['EncodedImage'] = encodedImage
+				}
+			}
+		}
+
+		this.checkFeedbacks('external_sound_playing')
+	}
+
+	getSoundImage(soundPath: string): string | undefined {
+		for (const guid of Object.keys(this.profilesData)) {
+			for (const sound of this.profilesData[guid]['Sounds']) {
+				if (sound['SoundPath'] == soundPath && sound['EncodedImage'] != undefined) {
+					return sound['EncodedImage']
+				}
+			}
+		}
+		return undefined
 	}
 
 	updateVoiceChangers(profileGuid: string, voiceChangers: object[] | any[]) {
@@ -200,8 +234,7 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 			var currentPlaying = this.getVariableValue('playing_sounds')
 
 			if (currentPlaying != undefined) {
-				var ind = currentPlaying.indexOf(soundPath)
-				if (ind == -1) {
+				if (!currentPlaying.includes(soundPath)) {
 					this.setVariableValues({
 						'playing_sounds': [...currentPlaying, soundPath],
 					})
@@ -216,9 +249,11 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 		} else {
 			this.handleSoundFinished(soundPath)
 		}
+
+		this.checkFeedbacks('custom_sound_playing', 'external_sound_playing')
 	}
 
-	handleSoundFinished(soundPath: string) {
+	handleSoundFinished(soundPath: string, subcall = false) {
 		var currentPlaying = this.getVariableValue('playing_sounds')
 
 		if (currentPlaying != undefined) {
@@ -231,7 +266,10 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 			})
 		}
 
-		this.log('info', `Sound stopped '${soundPath}'`)
+		if (!subcall) {
+			this.log('info', `Sound stopped '${soundPath}'`)
+			this.checkFeedbacks('custom_sound_playing', 'external_sound_playing')
+		}
 	}
 
 	// Return config fields for web config
