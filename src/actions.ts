@@ -1,70 +1,73 @@
 import type ModuleInstance from './main.js'
 
 export type ActionsSchema = {
-	play_sound_full: {
+	add_sound: {
 		options: {
-			path: string
-		}
-	},
-	play_sound_relative: {
-		options: {
-			filename: string
+			profile: string,
+			sound: string,
 		}
 	},
 	stop_all_sounds: {
-		options: {}
-	}
+		options: {
+			immediately: boolean,
+		}
+	},
 }
 
-// TODO Specific stop sound because Play Sound doesnt respect Click Action (always overlap)
 export function UpdateActions(self: ModuleInstance): void {
 	self.setActionDefinitions({
-		play_sound_full: {
-			name: 'Play Sound (full path)',
-			description: 'PLay a sound from its full file path',
+		add_sound: {
+			name: 'Add Sound',
+			description: 'Play a sound from a profile',
 			options: [
 				{
-					id: 'path',
-					type: 'textinput',
-					label: 'Sound full path',
-					description: 'In Smoredboard, right click on a sound > Open Sound File in Explorer > Copy the path to the file'
+					id: 'profile',
+					type: 'dropdown',
+					label: 'Select a profile',
+					choices: [
+						{ id: 'null', label: '---'},
+						...(self.getProfilesDropdown() || []),
+					],
+					default: 'null',
+					disableAutoExpression: true,
+				},
+				{
+					id: 'sound',
+					type: 'dropdown',
+					label: 'Select a sound',
+					description: 'The profile name on the sound must be the same as the one selected above',
+					choices: [
+						{ id: 'null', label: '---'},
+						...(self.getSoundsDropdown() || []),
+					],
+					default: 'null',
+					isVisibleExpression: '$(options:profile) != "null"',
+					disableAutoExpression: true,
 				},
 			],
 			callback: async (event) => {
-				self.playSound(event.options.path)
-			},
-		},
-		play_sound_relative: {
-			name: 'Play Sound (relative)',
-			description: 'Play a sound from the folder set in the config',
-			options: [
-				{
-					id: 'filename',
-					type: 'textinput',
-					label: 'Sound file name',
-					description: '/!\\ NOT SOUND NAME, the file name. In Smoredboard, right click on a sound > Open Sound File in Explorer > Copy the file name with the extension'
-				},
-			],
-			callback: async (event) => {
-				if (self.config.soundsFolder != undefined) {
-					self.playSound(self.config.soundsFolder + event.options.filename)
-				} else {
-					self.log('error', 'Sounds folder is not set in the config')
+				if (event.options.profile != 'null' &&
+					event.options.sound != 'null') {
+					self.playSound(event.options.profile, event.options.sound)
 				}
 			},
 		},
 		stop_all_sounds: {
 			name: 'Stop All Sounds',
-			options: [],
-			callback: async () => {
-				var msg = {
-				  Action: "StopAllSounds",
-				  Token: "SMORED1999VERYGOODANDCOOL",
-				  ProfileGuid: self.profileGuid
+			options: [
+				{
+					id: 'immediately',
+					type: 'checkbox',
+					'label': 'Stop immediately',
+					default: false
 				}
-
-				self.ws?.send(JSON.stringify(msg))
-				console.log(`Stopped all sounds`)
+			],
+			callback: async (event) => {
+				if (event.options.immediately) {
+					self.sendPacket('StopAllSoundsImmediately')
+				} else {
+					self.sendPacket('StopAllSounds')
+				}
 			},
 		}
 	})

@@ -1,4 +1,4 @@
-import { InstanceBase, InstanceStatus, type SomeCompanionConfigField } from '@companion-module/base'
+import { InstanceBase, InstanceStatus, type DropdownChoice, type SomeCompanionConfigField } from '@companion-module/base'
 import { GetConfigFields, type ModuleConfig } from './config.js'
 import { UpdateVariableDefinitions, type VariablesSchema } from './variables.js'
 import { UpgradeScripts } from './upgrades.js'
@@ -20,10 +20,23 @@ export { UpgradeScripts }
 export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 	config!: ModuleConfig // Setup in init()
 	public ws: WebSocket | undefined
-	public profileGuid: string | undefined
+	/**
+	 * ```json
+	 * {
+	 * 		"{profileGuid}": {
+	 * 			"ProfileName": string
+	 * 			"ImagePath": string
+	 * 			"Sounds": [ {result of GetProfileSounds} ],
+	 * 			"VoiceChangers": [ {result of GetProfileVoiceChangers} ]
+	 * 		},
+	 * 		...
+	 * }
+	 */
+	public profilesData: object | any
 
 	constructor(internal: unknown) {
 		super(internal)
+		this.profilesData = {}
 	}
 
 	async init(config: ModuleConfig): Promise<void> {
@@ -41,7 +54,7 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 
 		ws.on('error', (err) => {
 			this.updateStatus(InstanceStatus.ConnectionFailure, 'Connection error')
-			this.log('debug', 'Socket connect error: ' + err)
+			this.log('error', 'Socket connect error: ' + err)
 		})
 
 		ws.on('open', () => {
@@ -63,21 +76,18 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 			} else {
 				if (res['Action'] == 'Hello') {
 					this.updateStatus(InstanceStatus.Ok)
-					this.log('info', 'Successfully reached server and authenticated. Now setting profile')
+					this.log('info', 'Successfully reached server and authenticated. Now getting profiles')
 					this.sendPacket("GetProfiles")
 				} else if (res['Action'] == 'GetProfiles') {
-					if (res['Profiles'].length != 0) {
-						for (const profile of res['Profiles']) {
-							if (profile['name'] == config.profileName)
-								this.profileGuid = profile['Id']
-						}
-
-						if (config.profileName == undefined || this.profileGuid == undefined) {
-							this.profileGuid = res["Profiles"][0]["Id"]
-						}
-					} else {
-						this.updateStatus(InstanceStatus.ConnectionFailure)
-					}
+					this.updateProfiles(res['Profiles'])
+				} else if (res['Action'] == 'GetProfileSounds') {
+					this.updateSounds(res['ProfileGuid'], res['Sounds'])
+				} else if (res['Action'] == 'GetProfileVoiceChangers') {
+					this.updateVoiceChangers(res['ProfileGuid'], res['VoiceChangers'])
+				} else if (res['Action'] == 'IsSoundPlayingStreamdeck') {
+					this.handleIsSoundPlaying(res['Message'], res['SoundPath'])
+				} else if (res['Action'] == 'SoundFinished') {
+					this.handleSoundFinished(res['SoundPath'])
 				}
 			}
 		})
@@ -91,6 +101,73 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 	async configUpdated(config: ModuleConfig): Promise<void> {
 		this.config = config
 		this.connect();
+	}
+
+	updateProfiles(profiles: object[] | any[]) {
+		var updated = Object.keys(this.profilesData)
+		for (const profile of profiles) {
+			var guid = profile['Id']
+			if (!(guid in this.profilesData)) {
+				this.profilesData[guid] = {}
+				this.profilesData[guid]['Sounds'] = []
+				this.profilesData[guid]['VoiceChangers'] = []
+			}
+
+			this.profilesData[guid]['ProfileName'] = profile['name']
+			this.profilesData[guid]['ImagePath'] = profile['ImagePath']
+
+			var ind = updated.indexOf(guid)
+			if (ind != -1) {
+				updated.splice(ind, 1)
+			}
+
+			this.sendPacket('GetProfileSounds', { ProfileGuid: guid })
+		}
+
+		for (const guid of updated) {
+			delete this.profilesData[guid]
+		}
+		this.updateActions()
+	}
+
+	getProfilesDropdown(): DropdownChoice[] {
+		var res: DropdownChoice[] = []
+		for (const id of Object.keys(this.profilesData)) {
+			res.push({ id: id, label: this.profilesData[id]['ProfileName'] })
+		}
+		return res
+	}
+
+	updateSounds(profileGuid: string, sounds: object[] | any[]) {
+		if (profileGuid in this.profilesData) {
+			this.profilesData[profileGuid]['Sounds'] = sounds
+		}
+		this.updateActions()
+	}
+
+	getSoundsDropdown(): DropdownChoice[] {
+		var res: DropdownChoice[] = []
+		for (const guid of Object.keys(this.profilesData)) {
+			for (const sound of this.profilesData[guid]['Sounds']) {
+				res.push({ id: sound['SoundPath'], label: this.profilesData[guid]['ProfileName'] + ' - ' + sound['Name'] })
+			}
+		}
+		return res
+	}
+
+	getSoundName(soundPath: string, profileGuid: string): string {
+		for (const sound of this.profilesData[profileGuid]['Sounds']) {
+			if (sound['SoundPath'] == soundPath)
+				return sound['Name']
+		}
+		return ''
+	}
+
+	updateVoiceChangers(profileGuid: string, voiceChangers: object[] | any[]) {
+		if (profileGuid in this.profilesData) {
+			this.profilesData[profileGuid]['VoiceChangers'] = voiceChangers
+		}
+		this.updateActions()
 	}
 
 	sendPacket(action: string, fields = {}): void {
@@ -107,14 +184,54 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 		this.sendPacket("Hello")
 	}
 
-	playSound(fullPath: string): void {
+	playSound(profileGuid: string, soundPath: string): void {
 		var msg = {
-		  SoundPath: fullPath,
-		  ProfileGuid: this.profileGuid
+			SoundPath: soundPath,
+			ProfileGuid: profileGuid
 		}
 
-		this.sendPacket("PlaySound", msg)
-		this.log('debug', `Play sound '${fullPath}'`)
+		this.sendPacket("SfxPressed", msg)
+
+		this.sendPacket("IsSoundPlayingStreamdeck", { SoundPath: soundPath })
+	}
+
+	handleIsSoundPlaying(playing: string, soundPath: string) {
+		if (playing == "true") {
+			var currentPlaying = this.getVariableValue('playing_sounds')
+
+			if (currentPlaying != undefined) {
+				var ind = currentPlaying.indexOf(soundPath)
+				if (ind == -1) {
+					this.setVariableValues({
+						'playing_sounds': [...currentPlaying, soundPath],
+					})
+				}
+			} else {
+				this.setVariableValues({
+					'playing_sounds': [soundPath],
+				})
+			}
+
+			this.log('info', `Sound playing '${soundPath}'`)
+		} else {
+			this.handleSoundFinished(soundPath)
+		}
+	}
+
+	handleSoundFinished(soundPath: string) {
+		var currentPlaying = this.getVariableValue('playing_sounds')
+
+		if (currentPlaying != undefined) {
+			var ind = currentPlaying.indexOf(soundPath)
+			if (ind != -1) {
+				currentPlaying.splice(ind, 1)
+			}
+			this.setVariableValues({
+				'playing_sounds': currentPlaying,
+			})
+		}
+
+		this.log('info', `Sound stopped '${soundPath}'`)
 	}
 
 	// Return config fields for web config
