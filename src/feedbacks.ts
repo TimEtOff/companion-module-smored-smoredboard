@@ -12,6 +12,8 @@ export type FeedbacksSchema = {
 		type: 'advanced'
 		options: {
 			showName: boolean,
+			activeChangeImage: boolean,
+			activeBgColor: number,
 			image_warning: undefined,
 			profile: string,
 			sound: string,
@@ -23,10 +25,11 @@ export function UpdateFeedbacks(self: ModuleInstance): void {
 	self.setFeedbackDefinitions({
 		custom_sound_playing: {
 			name: 'Custom sound playing',
+			description: 'Change style when the sound is playing',
 			type: 'boolean',
 			defaultStyle: {
-				bgcolor: 0xff0000,
-				color: 0x000000,
+				bgcolor: 0xfbb040,
+				color: 0xffffff,
 			},
 			options: [
 				{
@@ -65,13 +68,26 @@ export function UpdateFeedbacks(self: ModuleInstance): void {
 		},
 		external_sound_playing: {
 			name: 'External sound playing',
+			description: 'Change style to the one in SmoredBoard',
 			type: 'advanced',
 			options: [
 				{
 					id: 'showName',
 					type: 'checkbox',
 					label: 'Show the sound name',
-					default: false
+					default: true
+				},
+				{
+					id: 'activeChangeImage',
+					type: 'checkbox',
+					label: 'Currently playing image',
+					default: true
+				},
+				{
+					id: 'activeBgColor',
+					type: 'colorpicker',
+					label: 'Background color',
+					default: 0xfbb040
 				},
 				{
 					id: 'image_warning',
@@ -104,9 +120,8 @@ export function UpdateFeedbacks(self: ModuleInstance): void {
 					disableAutoExpression: true,
 				},
 			],
-			affectedProperties: ['png64', 'text'],
+			affectedProperties: ['png64', 'text', 'bgcolor'],
 			callback: async (feedback) => {
-
 				if (feedback.options.profile != 'null' && feedback.options.sound != "null") {
 					var image = self.getSoundImage(feedback.options.sound)
 					if (image == undefined) {
@@ -119,18 +134,23 @@ export function UpdateFeedbacks(self: ModuleInstance): void {
 					var currentPlaying = self.getVariableValue('playing_sounds')
 					var active = currentPlaying != undefined && currentPlaying.includes(feedback.options.sound)
 
-					if (feedback.options.showName) {
-						return active
-							? { png64: undefined, text: self.getSoundName(feedback.options.sound, feedback.options.profile) } // TODO Add image var when imported
-							: { png64: image, text: self.getSoundName(feedback.options.sound, feedback.options.profile) }
-					} else {
-						return active
-							? { png64: undefined } // TODO Add image var when imported
-							: { png64: image } // TODO Image border?
+					if (feedback.options.activeChangeImage && active) {
+						image = undefined // TODO Add image var when imported
+					}
+
+					return {
+						png64: image,
+						text: feedback.options.showName ? self.getSoundName(feedback.options.sound, feedback.options.profile) : undefined,
+						bgcolor: active ? feedback.options.activeBgColor : undefined
 					}
 				}
 				return {}
-			}, // TODO add reset stored image when unsubscribe
+			},
+			unsubscribe: async (feedback) => {
+				if (feedback.options.profile != 'null' && feedback.options.sound != "null") {
+					self.unsetSoundImage(feedback.options.sound)
+				}
+			}
 		},
 	})
 }

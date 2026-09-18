@@ -186,6 +186,16 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 		this.checkFeedbacks('external_sound_playing')
 	}
 
+	unsetSoundImage(soundPath: string) {
+		for (const guid of Object.keys(this.profilesData)) {
+			for (var i = 0; i < this.profilesData[guid]['Sounds'].length; i++) {
+				if (this.profilesData[guid]['Sounds'][i]['SoundPath'] == soundPath) {
+					this.profilesData[guid]['Sounds'][i]['EncodedImage'] = undefined
+				}
+			}
+		}
+	}
+
 	getSoundImage(soundPath: string): string | undefined {
 		for (const guid of Object.keys(this.profilesData)) {
 			for (const sound of this.profilesData[guid]['Sounds']) {
