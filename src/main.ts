@@ -52,8 +52,6 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 		const ws = new WebSocket(`ws://${config.host}:${config.port}`)
 		this.ws = ws
 
-		this.log('debug', 'test start lolol')
-
 		ws.on('error', (err) => {
 			this.updateStatus(InstanceStatus.ConnectionFailure, 'Connection error')
 			this.log('error', 'Socket connect error: ' + err)
@@ -64,8 +62,6 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 		})
 
 		ws.on('message', (msg_data) => {
-			this.log('debug', 'Received: ' + msg_data)
-
 			var res = JSON.parse(msg_data.toString())
 
 
@@ -80,21 +76,36 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 					this.updateStatus(InstanceStatus.Ok)
 					this.log('info', 'Successfully reached server and authenticated. Now getting profiles')
 					this.sendPacket("GetProfiles")
+
 				} else if (res['Action'] == 'GetProfiles') {
 					this.updateProfiles(res['Profiles'])
+
 				} else if (res['Action'] == 'GetProfileSounds') {
 					this.updateSounds(res['ProfileGuid'], res['Sounds'])
+
 				} else if (res['Action'] == 'GetProfileVoiceChangers') {
 					this.updateVoiceChangers(res['ProfileGuid'], res['VoiceChangers'])
+
 				} else if (res['Action'] == 'IsSoundPlayingStreamdeck') {
 					this.handleIsSoundPlaying(res['Message'], res['SoundPath'])
+
 				} else if (res['Action'] == 'SoundFinished') {
 					this.handleSoundFinished(res['SoundPath'])
+
+				} else if (res['Action'] == 'StopAllSounds') {
+					this.log('info', 'Stopped all sounds')
+
+				} else if (res['Action'] == 'StopAllSoundsImmediately') {
+					this.log('info', 'Stopped all sounds immediatly')
+
 				} else if (res['Action'] == 'GetSFXInfo') {
 					var data = res['Message'].split(' |+| ')
 					if (data.length == 2) {
 						this.setSoundImage(data[0], data[1])
 					}
+
+				} else if (res['Action'] != '') {
+					this.log('debug', 'Received (not handled): ' + msg_data)
 				}
 			}
 		})
@@ -259,7 +270,7 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 
 			this.log('info', `Sound playing '${soundPath}'`)
 		} else {
-			this.handleSoundFinished(soundPath)
+			this.handleSoundFinished(soundPath, true)
 		}
 
 		this.checkFeedbacks('custom_sound_playing', 'external_sound_playing')
