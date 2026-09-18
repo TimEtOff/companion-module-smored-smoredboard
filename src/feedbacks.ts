@@ -135,7 +135,27 @@ export function UpdateFeedbacks(self: ModuleInstance): void {
 					var active = currentPlaying != undefined && currentPlaying.includes(feedback.options.sound)
 
 					if (feedback.options.activeChangeImage && active) {
-						image = undefined // TODO Add image var when imported
+						var min = Math.ceil(1)
+    					var max = Math.floor(5)
+
+						// Need to do that because getVariableValue doesnt work with a dynamic argument
+						switch (Math.floor(Math.random() * (max - min + 1)) + min) {
+							case 1:
+								image = self.getVariableValue('img_playinganimation_sd_sound_playing_animation_1_base64')
+								break
+							case 2:
+								image = self.getVariableValue('img_playinganimation_sd_sound_playing_animation_2_base64')
+								break
+							case 3:
+								image = self.getVariableValue('img_playinganimation_sd_sound_playing_animation_3_base64')
+								break
+							case 4:
+								image = self.getVariableValue('img_playinganimation_sd_sound_playing_animation_4_base64')
+								break
+							case 5:
+								image = self.getVariableValue('img_playinganimation_sd_sound_playing_animation_5_base64')
+								break
+						}
 					}
 
 					return {

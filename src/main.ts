@@ -1,6 +1,7 @@
 import { InstanceBase, InstanceStatus, type DropdownChoice, type SomeCompanionConfigField } from '@companion-module/base'
 import { GetConfigFields, type ModuleConfig } from './config.js'
 import { UpdateVariableDefinitions, type VariablesSchema } from './variables.js'
+import { SetImages } from './images.js'
 import { UpgradeScripts } from './upgrades.js'
 import { UpdateActions, type ActionsSchema } from './actions.js'
 import { UpdateFeedbacks, type FeedbacksSchema } from './feedbacks.js'
@@ -46,6 +47,7 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 		this.updateFeedbacks() // export feedbacks
 		this.updatePresets() // export Presets
 		this.updateVariableDefinitions() // export variable definitions
+		SetImages(this)
 
 		const ws = new WebSocket(`ws://${config.host}:${config.port}`)
 		this.ws = ws
