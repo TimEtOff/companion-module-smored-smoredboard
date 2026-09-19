@@ -103,6 +103,7 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 					if (data.length == 2) {
 						this.setSoundImage(data[0], data[1])
 					}
+					// FIXME Encode to base64 if a file location is received
 
 				} else if (res['Action'] != '') {
 					this.log('debug', 'Received (not handled): ' + msg_data)

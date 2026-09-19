@@ -1,6 +1,13 @@
 import type ModuleInstance from './main.js'
 
 export type FeedbacksSchema = {
+	get_sound_id: {
+		type: 'value'
+		options: {
+			profile: string,
+			sound: string,
+		}
+	}
 	custom_sound_playing: {
 		type: 'boolean'
 		options: {
@@ -14,7 +21,7 @@ export type FeedbacksSchema = {
 			showName: boolean,
 			activeChangeImage: boolean,
 			activeBgColor: number,
-			image_warning: undefined,
+			image_warning: boolean,
 			profile: string,
 			sound: string,
 		}
@@ -23,14 +30,10 @@ export type FeedbacksSchema = {
 
 export function UpdateFeedbacks(self: ModuleInstance): void {
 	self.setFeedbackDefinitions({
-		custom_sound_playing: {
-			name: 'Custom sound playing',
-			description: 'Change style when the sound is playing',
-			type: 'boolean',
-			defaultStyle: {
-				bgcolor: 0xfbb040,
-				color: 0xffffff,
-			},
+		get_sound_id: {
+			name: 'Select a sound',
+			description: 'Select a sound from a profile for button-wide selection in a local variable',
+			type: 'value',
 			options: [
 				{
 					id: 'profile',
@@ -41,7 +44,6 @@ export function UpdateFeedbacks(self: ModuleInstance): void {
 						...(self.getProfilesDropdown() || []),
 					],
 					default: 'null',
-					disableAutoExpression: true,
 				},
 				{
 					id: 'sound',
@@ -53,8 +55,44 @@ export function UpdateFeedbacks(self: ModuleInstance): void {
 						...(self.getSoundsDropdown() || []),
 					],
 					default: 'null',
-					isVisibleExpression: '$(options:profile) != "null"',
-					disableAutoExpression: true,
+				},
+			],
+			callback: (feedback) => {
+				return {
+					profile: feedback.options.profile,
+					sound: feedback.options.sound
+				}
+			},
+		},
+		custom_sound_playing: {
+			name: 'Custom sound playing',
+			description: 'Change style when the sound is playing',
+			type: 'boolean',
+			defaultStyle: {
+				bgcolor: 0xfbb040,
+				color: 0x000000,
+			},
+			options: [
+				{
+					id: 'profile',
+					type: 'dropdown',
+					label: 'Select a profile',
+					choices: [
+						{ id: 'null', label: '---'},
+						...(self.getProfilesDropdown() || []),
+					],
+					default: 'null',
+				},
+				{
+					id: 'sound',
+					type: 'dropdown',
+					label: 'Select a sound',
+					description: 'The profile name on the sound must be the same as the one selected above',
+					choices: [
+						{ id: 'null', label: '---'},
+						...(self.getSoundsDropdown() || []),
+					],
+					default: 'null',
 				},
 			],
 			callback: (feedback) => {
@@ -104,7 +142,6 @@ export function UpdateFeedbacks(self: ModuleInstance): void {
 						...(self.getProfilesDropdown() || []),
 					],
 					default: 'null',
-					disableAutoExpression: true,
 				},
 				{
 					id: 'sound',
@@ -116,11 +153,9 @@ export function UpdateFeedbacks(self: ModuleInstance): void {
 						...(self.getSoundsDropdown() || []),
 					],
 					default: 'null',
-					isVisibleExpression: '$(options:profile) != "null"',
-					disableAutoExpression: true,
 				},
 			],
-			affectedProperties: ['png64', 'text', 'bgcolor'],
+			affectedProperties: ['png64', 'text', 'color', 'bgcolor'],
 			callback: async (feedback) => {
 				if (feedback.options.profile != 'null' && feedback.options.sound != "null") {
 					var image = self.getSoundImage(feedback.options.sound)
@@ -154,17 +189,21 @@ export function UpdateFeedbacks(self: ModuleInstance): void {
 								break
 							case 5:
 								image = self.getVariableValue('img_playinganimation_sd_sound_playing_animation_5_base64')
-								break
+								break // TODO Try an animation
 						}
 					}
 
 					return {
 						png64: image,
 						text: feedback.options.showName ? self.getSoundName(feedback.options.sound, feedback.options.profile) : undefined,
+						color: active ? 0x000000 : undefined,
 						bgcolor: active ? feedback.options.activeBgColor : undefined
 					}
 				}
-				return {}
+				return {
+					png64: self.getVariableValue('img_playinganimation_sd_sound_playing_animation_1_base64'),
+					text: 'Select a sound'
+				}
 			},
 			unsubscribe: async (feedback) => {
 				if (feedback.options.profile != 'null' && feedback.options.sound != "null") {

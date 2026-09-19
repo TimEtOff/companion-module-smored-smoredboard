@@ -29,7 +29,6 @@ export function UpdateActions(self: ModuleInstance): void {
 						...(self.getProfilesDropdown() || []),
 					],
 					default: 'null',
-					disableAutoExpression: true,
 				},
 				{
 					id: 'sound',
@@ -41,8 +40,6 @@ export function UpdateActions(self: ModuleInstance): void {
 						...(self.getSoundsDropdown() || []),
 					],
 					default: 'null',
-					isVisibleExpression: '$(options:profile) != "null"',
-					disableAutoExpression: true,
 				},
 			],
 			callback: async (event) => {

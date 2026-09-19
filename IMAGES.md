@@ -1,8 +1,8 @@
 # Guide for built-in images
 
-There are 64 official images from SmoredBoard built into the plugin, using variables
-Here are the list of images with their variable name
-You can use it by setting these variables in an image element expression field in the style tab of a button
+There are 64 official images from SmoredBoard built into the plugin, using variables.
+Here are the list of images with their variable name.
+You can use it by setting these variables in an image element expression field in the style tab of a button.
 
 ## autoLoadButton
 
