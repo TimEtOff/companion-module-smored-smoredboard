@@ -105,7 +105,7 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 					if (data.length == 2) {
 						if (data[1].startsWith('data:')) {
 							this.setSoundImage(data[0], data[1])
-						} else {
+						} else if (data[1].length != 0) {
 							var encoded = readFileSync(data[1], 'base64')
 							encoded = 'data:' + lookup(data[1]) + ';base64,' + encoded
 							this.setSoundImage(data[0], encoded)
