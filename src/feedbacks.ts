@@ -19,11 +19,14 @@ export type FeedbacksSchema = {
 		type: 'advanced'
 		options: {
 			showName: boolean,
-			activeChangeImage: boolean,
+			activeAnimation: boolean,
 			activeBgColor: number,
-			image_warning: boolean,
+			imageWarning: boolean,
 			profile: string,
 			sound: string,
+
+			animFrame: number, // Invisble, used for animation
+			lastFrame: number,
 		}
 	}
 }
@@ -116,9 +119,9 @@ export function UpdateFeedbacks(self: ModuleInstance): void {
 					default: true
 				},
 				{
-					id: 'activeChangeImage',
+					id: 'activeAnimation',
 					type: 'checkbox',
-					label: 'Currently playing image',
+					label: 'Currently playing animation',
 					default: true
 				},
 				{
@@ -128,7 +131,7 @@ export function UpdateFeedbacks(self: ModuleInstance): void {
 					default: 0xfbb040
 				},
 				{
-					id: 'image_warning',
+					id: 'imageWarning',
 					type: 'static-text',
 					label: 'Fetch image from SmoredBoard',
 					value: 'Needs an image placement in Style tab'
@@ -154,6 +157,24 @@ export function UpdateFeedbacks(self: ModuleInstance): void {
 					],
 					default: 'null',
 				},
+				{
+					id: 'animFrame',
+					type: 'number',
+					label: 'Animation frame',
+					min: 1,
+					max: 5,
+					default: 1,
+					isVisibleExpression: 'false'
+				},
+				{
+					id: 'lastFrame',
+					type: 'number',
+					label: 'Time millis of last frame',
+					min: 0,
+					max: Number.MAX_SAFE_INTEGER,
+					default: 0,
+					isVisibleExpression: 'true'
+				}
 			],
 			affectedProperties: ['png64', 'text', 'color', 'bgcolor'],
 			callback: async (feedback) => {
@@ -169,12 +190,9 @@ export function UpdateFeedbacks(self: ModuleInstance): void {
 					var currentPlaying = self.getVariableValue('playing_sounds')
 					var active = currentPlaying != undefined && currentPlaying.includes(feedback.options.sound)
 
-					if (feedback.options.activeChangeImage && active) {
-						var min = Math.ceil(1)
-    					var max = Math.floor(5)
-
+					if (feedback.options.activeAnimation && active) {
 						// Need to do that because getVariableValue doesnt work with a dynamic argument
-						switch (Math.floor(Math.random() * (max - min + 1)) + min) {
+						switch (feedback.options.animFrame) {
 							case 1:
 								image = self.getVariableValue('img_playinganimation_sd_sound_playing_animation_1_base64')
 								break
@@ -189,8 +207,19 @@ export function UpdateFeedbacks(self: ModuleInstance): void {
 								break
 							case 5:
 								image = self.getVariableValue('img_playinganimation_sd_sound_playing_animation_5_base64')
-								break // TODO Try an animation
+								break
 						}
+
+						if (Date.now() - feedback.options.lastFrame >= 200) {
+							if (feedback.options.animFrame < 5) {
+								feedback.options.animFrame += 1
+							} else {
+								feedback.options.animFrame = 1
+							}
+
+							feedback.options.lastFrame = Date.now()
+						}
+						self.checkFeedbacksById(feedback.id)
 					}
 
 					return {

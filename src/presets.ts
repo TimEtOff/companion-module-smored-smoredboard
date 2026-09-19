@@ -16,7 +16,7 @@ export function UpdatePresets(self: ModuleInstance): void {
 		},
 	]
 
-	const presets: CompanionPresetDefinitions<ModuleSchema> = {} // TODO Change images variables to composite elements?
+	const presets: CompanionPresetDefinitions<ModuleSchema> = {}
 	presets['labeled_extern_sound'] = {
 		type: 'layered',
 		name: 'Labeled External Sound',
@@ -50,11 +50,12 @@ export function UpdatePresets(self: ModuleInstance): void {
 				feedbackId: 'external_sound_playing',
 				options: {
 					showName: true,
-					activeChangeImage: true,
+					activeAnimation: true,
 					activeBgColor: 0xfbb040,
-					image_warning: true,
+					imageWarning: true,
 					profile: { isExpression: true, value: `$(local:sound)['profile']` },
 					sound: { isExpression: true, value: `$(local:sound)['sound']` },
+					animFrame: 1, lastFrame: 0,
 				},
 				styleOverrides: [
 					{
@@ -150,11 +151,12 @@ export function UpdatePresets(self: ModuleInstance): void {
 				feedbackId: 'external_sound_playing',
 				options: {
 					showName: false,
-					activeChangeImage: true,
+					activeAnimation: true,
 					activeBgColor: 0xfbb040,
-					image_warning: true,
+					imageWarning: true,
 					profile: { isExpression: true, value: `$(local:sound)['profile']` },
 					sound: { isExpression: true, value: `$(local:sound)['sound']` },
+					animFrame: 1, lastFrame: 0,
 				},
 				styleOverrides: [
 					{
