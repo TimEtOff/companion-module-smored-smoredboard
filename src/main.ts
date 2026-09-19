@@ -7,6 +7,8 @@ import { UpdateActions, type ActionsSchema } from './actions.js'
 import { UpdateFeedbacks, type FeedbacksSchema } from './feedbacks.js'
 import { UpdatePresets } from './presets.js'
 import WebSocket from 'ws';
+import { readFileSync } from 'fs'
+import { lookup } from 'mime-types'
 
 export type ModuleSchema = {
 	config: ModuleConfig
@@ -101,9 +103,14 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 				} else if (res['Action'] == 'GetSFXInfo') {
 					var data = res['Message'].split(' |+| ')
 					if (data.length == 2) {
-						this.setSoundImage(data[0], data[1])
+						if (data[1].startsWith('data:')) {
+							this.setSoundImage(data[0], data[1])
+						} else {
+							var encoded = readFileSync(data[1], 'base64')
+							encoded = 'data:' + lookup(data[1]) + ';base64,' + encoded
+							this.setSoundImage(data[0], encoded)
+						}
 					}
-					// FIXME Encode to base64 if a file location is received
 
 				} else if (res['Action'] != '') {
 					this.log('debug', 'Received (not handled): ' + msg_data)
